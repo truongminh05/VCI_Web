@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../(providers)/AuthContext";
+import logoImg from "../../public/logo-vci.png";
 
 export default function AdminLayout({
   children,
@@ -54,7 +55,38 @@ export default function AdminLayout({
           boxSizing: "border-box",
         }}
       >
-        <h2 style={{ fontSize: 18, marginBottom: 16 }}>VCI Admin</h2>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {/* Logo: Bỏ nền trắng, thêm bo tròn 50% để đảm bảo ảnh luôn tròn */}
+          <img
+            src={logoImg.src}
+            alt="VCI Logo"
+            style={{
+              width: 30, // Tăng kích thước một chút cho cân đối
+              height: 30,
+              objectFit: "cover", // Giúp ảnh lấp đầy khung tròn
+              borderRadius: "50%", // Cắt ảnh thành hình tròn (nếu ảnh gốc là hình vuông)
+            }}
+          />
+
+          {/* Chữ VCI Admin */}
+          <h2
+            style={{
+              fontSize: 18,
+              margin: 0,
+              lineHeight: "1",
+              fontWeight: 600,
+            }}
+          >
+            VCI Admin
+          </h2>
+        </div>
         <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24 }}>
           {hoso?.ho_ten || user.email} <br />
           <span style={{ fontSize: 12, color: "#6b7280" }}>Quản trị viên</span>
@@ -106,6 +138,12 @@ export default function AdminLayout({
             style={navBtnStyle}
           >
             Quản lý buổi học
+          </button>
+          <button
+            onClick={() => router.push("/admin/attendance-report")}
+            style={navBtnStyle}
+          >
+            Báo cáo điểm danh
           </button>
         </nav>
 

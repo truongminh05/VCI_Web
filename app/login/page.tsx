@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image"; // Import component Image của Next.js
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "../(providers)/AuthContext";
+import logoImg from "../../public/logo-vci.png";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,80 +55,150 @@ export default function LoginPage() {
       <div
         style={{
           width: "100%",
-          maxWidth: 420,
-          background: "#020617",
+          maxWidth: 400,
+          background: "#0f172a", // Màu nền thẻ sáng hơn nền chung một chút
           borderRadius: 16,
           border: "1px solid #1f2937",
-          padding: 24,
+          padding: 32,
           color: "white",
+          boxShadow:
+            "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)", // Thêm bóng đổ
         }}
       >
-        <h1 style={{ fontSize: 24, marginBottom: 8 }}>
-          VCI Attendance - Admin
-        </h1>
-        <p style={{ fontSize: 14, color: "#9ca3af", marginBottom: 24 }}>
-          Đăng nhập tài khoản quản trị để tiếp tục
-        </p>
+        {/* PHẦN LOGO & TIÊU ĐỀ */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          {/* Logo container */}
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              position: "relative",
+              marginBottom: 16,
+              background: "white", // Nền trắng cho logo nếu logo trong suốt
+              borderRadius: "50%", // Bo tròn logo
+              padding: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/* Đảm bảo bạn đã lưu file ảnh tên logo.png vào thư mục public */}
+            <img
+              src={logoImg.src}
+              alt="VCI Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          </div>
 
+          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>
+            VCI Attendance
+          </h1>
+          <p style={{ fontSize: 14, color: "#9ca3af" }}>
+            Cổng quản trị hệ thống
+          </p>
+        </div>
+
+        {/* FORM ĐĂNG NHẬP */}
         <form onSubmit={handleLogin}>
-          <label style={{ fontSize: 13, color: "#9ca3af" }}>
-            Email
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{
+                fontSize: 13,
+                color: "#9ca3af",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Email
+            </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@vci.edu.vn"
               style={{
                 width: "100%",
-                marginTop: 4,
-                marginBottom: 16,
-                padding: "8px 10px",
+                padding: "10px 12px",
                 borderRadius: 8,
                 border: "1px solid #374151",
                 background: "#020617",
                 color: "white",
+                outline: "none",
+                fontSize: 15,
               }}
             />
-          </label>
+          </div>
 
-          <label style={{ fontSize: 13, color: "#9ca3af" }}>
-            Mật khẩu
+          <div style={{ marginBottom: 24 }}>
+            <label
+              style={{
+                fontSize: 13,
+                color: "#9ca3af",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Mật khẩu
+            </label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               style={{
                 width: "100%",
-                marginTop: 4,
-                marginBottom: 24,
-                padding: "8px 10px",
+                padding: "10px 12px",
                 borderRadius: 8,
                 border: "1px solid #374151",
                 background: "#020617",
                 color: "white",
+                outline: "none",
+                fontSize: 15,
               }}
             />
-          </label>
+          </div>
 
           <button
             type="submit"
             disabled={loading}
             style={{
               width: "100%",
-              padding: "10px 0",
+              padding: "12px 0",
               borderRadius: 9999,
               border: "none",
-              background: "#4f46e5",
+              background: "#4f46e5", // Màu tím chủ đạo
               color: "white",
               fontWeight: 600,
               cursor: "pointer",
               opacity: loading ? 0.7 : 1,
+              transition: "opacity 0.2s",
+              fontSize: 15,
             }}
           >
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            {loading ? "Đang xác thực..." : "Đăng nhập"}
           </button>
         </form>
+      </div>
+
+      {/* Footer nhỏ (tuỳ chọn) */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 16,
+          fontSize: 12,
+          color: "#4b5563",
+        }}
+      >
+        © 2025 VCI Attendance System
       </div>
     </div>
   );
