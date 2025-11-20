@@ -215,7 +215,7 @@ export default function AttendanceReportPage() {
 
       const lopName =
         classes.find((c) => c.id === selectedClass)?.ten_lop || "lop";
-      const fileName = `bao_cao_diemdanh_${lopName.replace(/\s+/g, "_")}.xlsx`;
+      const fileName = `bao_cao_diem_danh_${lopName.replace(/\s+/g, "_")}.xlsx`;
 
       saveAs(blob, fileName);
     } catch (e: any) {
