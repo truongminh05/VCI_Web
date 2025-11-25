@@ -145,6 +145,12 @@ export default function AdminLayout({
           >
             Báo cáo điểm danh
           </button>
+          <button
+            onClick={() => router.push("/admin/account-distribution")}
+            style={navBtnStyle}
+          >
+            Phát tài khoản
+          </button>
         </nav>
 
         <div style={{ marginTop: 32 }}>

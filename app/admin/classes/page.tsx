@@ -17,6 +17,7 @@ interface RosterItem {
   ho_ten: string;
   ma_sinh_vien: string;
   noAccount?: boolean; // true nếu từ dangky_import
+  importedId?: string; // id thật trong bang dangky_import
 }
 
 export default function AdminClassesPage() {
@@ -128,6 +129,7 @@ export default function AdminClassesPage() {
           .from("hoso")
           .select("nguoi_dung_id, ho_ten, ma_sinh_vien")
           .in("nguoi_dung_id", ids);
+
         if (e2) throw e2;
 
         rosterAccounts = (profiles || []).map((p: any) => ({
@@ -136,6 +138,13 @@ export default function AdminClassesPage() {
           ma_sinh_vien: p.ma_sinh_vien || "",
         }));
       }
+
+      // set mã SV đã có tài khoản (để lọc bớt import trùng)
+      const accCodes = new Set(
+        rosterAccounts
+          .map((r) => r.ma_sinh_vien?.trim().toLowerCase())
+          .filter(Boolean) as string[]
+      );
 
       // b) SV import Excel (chưa có tài khoản) -> từ dangky_import
       const { data: improts, error: e3 } = await supabase
@@ -146,12 +155,20 @@ export default function AdminClassesPage() {
 
       if (e3) throw e3;
 
-      const rosterImported: RosterItem[] = (improts || []).map((r: any) => ({
-        id: `imp:${r.id}`,
-        ho_ten: r.ho_ten,
-        ma_sinh_vien: r.ma_sinh_vien || "",
-        noAccount: true,
-      }));
+      const rosterImported: RosterItem[] = (improts || [])
+        // chỉ giữ lại dòng chưa có tài khoản tương ứng
+        .filter((r: any) => {
+          const code = (r.ma_sinh_vien || "").trim().toLowerCase();
+          if (!code) return true; // không có mã SV thì cứ để nguyên
+          return !accCodes.has(code); // nếu đã có tài khoản => ẩn dòng import
+        })
+        .map((r: any) => ({
+          id: `imp:${r.id}`,
+          importedId: r.id,
+          ho_ten: r.ho_ten,
+          ma_sinh_vien: r.ma_sinh_vien || "",
+          noAccount: true,
+        }));
 
       const merged = [...rosterAccounts, ...rosterImported].sort((a, b) =>
         a.ho_ten.localeCompare(b.ho_ten, "vi")
@@ -216,13 +233,40 @@ export default function AdminClassesPage() {
   // ====== XÓA SV KHỎI LỚP (CHỈ SV CÓ TÀI KHOẢN) ======
   const handleRemoveStudent = async (item: RosterItem) => {
     if (!selected?.id) return;
+
+    // xoá dòng import Excel
     if (item.noAccount) {
-      alert(
-        "Sinh viên import Excel hiện đang lưu ở bảng dangky_import. Nếu muốn xoá, xử lý theo nghiệp vụ riêng (hoặc bổ sung RPC admin_remove_import_row)."
-      );
+      if (!item.importedId) return;
+      if (
+        !confirm(
+          `Xoá sinh viên "${item.ho_ten}" (nguồn import Excel) khỏi lớp ${selected.ten_lop}?`
+        )
+      )
+        return;
+
+      try {
+        const { error } = await supabase
+          .from("dangky_import")
+          .delete()
+          .eq("id", item.importedId)
+          .eq("lop_id", selected.id);
+        if (error) throw error;
+
+        alert("Đã xoá sinh viên import khỏi lớp.");
+        openRoster(selected);
+      } catch (e: any) {
+        alert("Lỗi xoá import: " + (e.message || "Không thể xoá."));
+      }
       return;
     }
-    if (!confirm(`Xoá "${item.ho_ten}" khỏi lớp ${selected.ten_lop}?`)) return;
+
+    // xoá sinh viên đã có tài khoản (dangky)
+    if (
+      !confirm(
+        `Xoá "${item.ho_ten}" (đã có tài khoản) khỏi lớp ${selected.ten_lop}?`
+      )
+    )
+      return;
 
     try {
       const { error } = await supabase.rpc("admin_remove_student_from_class", {
@@ -564,22 +608,20 @@ export default function AdminClassesPage() {
                             {r.noAccount ? "Import Excel" : "Tài khoản"}
                           </td>
                           <td style={tdStyle}>
-                            {!r.noAccount && (
-                              <button
-                                onClick={() => handleRemoveStudent(r)}
-                                style={{
-                                  padding: "4px 10px",
-                                  borderRadius: 9999,
-                                  border: "none",
-                                  background: "#b91c1c",
-                                  color: "white",
-                                  cursor: "pointer",
-                                  fontSize: 12,
-                                }}
-                              >
-                                Xoá khỏi lớp
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleRemoveStudent(r)}
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 9999,
+                                border: "none",
+                                background: r.noAccount ? "#6b7280" : "#b91c1c", // xám cho import, đỏ cho tài khoản
+                                color: "white",
+                                cursor: "pointer",
+                                fontSize: 12,
+                              }}
+                            >
+                              {r.noAccount ? "Xoá import" : "Xoá khỏi lớp"}
+                            </button>
                           </td>
                         </tr>
                       ))}

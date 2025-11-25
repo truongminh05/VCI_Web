@@ -9,11 +9,14 @@ interface LopRow {
   ma_lop: string | null;
 }
 
-interface BulkCreatedUser {
+interface BulkRow {
   ho_ten: string;
   ma_sinh_vien: string;
   email: string;
   password: string;
+  status?: string;
+  lop_ten?: string;
+  lop_ma?: string;
 }
 
 export default function StudentAccountsPage() {
@@ -21,7 +24,7 @@ export default function StudentAccountsPage() {
   const [bulkClassId, setBulkClassId] = useState<string>("");
   const [bulkEmailDomain, setBulkEmailDomain] = useState<string>("");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<BulkCreatedUser[]>([]);
+  const [bulkResult, setBulkResult] = useState<BulkRow[]>([]);
 
   // Tải danh sách lớp
   const loadClasses = async () => {
@@ -80,16 +83,66 @@ export default function StudentAccountsPage() {
         throw new Error(error.message);
       }
 
-      const created = ((data as any)?.created || []) as BulkCreatedUser[];
+      const payload = data as any;
+      const created: BulkRow[] = payload?.created ?? [];
+      const recovered: BulkRow[] = payload?.recovered ?? [];
+      const reason: string | undefined = payload?.reason ?? undefined;
+      const sheetOk: boolean = Boolean(payload?.sheetOk);
+      const sheetError: string | undefined = payload?.sheetError ?? undefined;
 
-      if (!created.length) {
-        alert(
-          "Không có sinh viên nào cần tạo tài khoản (có thể tất cả đã có tài khoản)."
-        );
-        setBulkResult([]);
+      // Gộp tất cả để hiển thị trong bảng
+      const allRows: BulkRow[] = [...created, ...recovered];
+      setBulkResult(allRows);
+
+      // === Không xử lý được bản ghi nào ===
+      if (!created.length && !recovered.length) {
+        if (reason === "NO_IMPORT_ROWS") {
+          alert(
+            "Lớp này chưa có dữ liệu import (bảng dangky_import trống cho lớp này)."
+          );
+        } else if (reason === "NO_USABLE_ROWS") {
+          alert(
+            "Không xử lý được dòng nào trong danh sách import (có thể mã sinh viên trống hoặc dữ liệu không hợp lệ)."
+          );
+        } else {
+          alert(
+            "Không có sinh viên nào cần tạo tài khoản (có thể tất cả đã có tài khoản)."
+          );
+        }
+        return;
+      }
+
+      // === Có new accounts (created > 0) ===
+      if (created.length > 0) {
+        if (sheetOk) {
+          alert(
+            `Đã tạo ${created.length} tài khoản mới.\n` +
+              `Danh sách tài khoản/mật khẩu đã được lưu lên Google Sheet.`
+          );
+        } else if (sheetError) {
+          alert(
+            `Đã tạo ${created.length} tài khoản mới.\n` +
+              `Tuy nhiên KHÔNG gửi được dữ liệu lên Google Sheet.\nChi tiết: ${sheetError}`
+          );
+        } else {
+          alert(
+            `Đã tạo ${created.length} tài khoản mới.\n` +
+              `Google Sheet không được cấu hình hoặc không nhận dữ liệu.`
+          );
+        }
+
+        // Nếu đồng thời có recovered → báo thêm
+        if (recovered.length > 0) {
+          alert(
+            `Ngoài ra còn ${recovered.length} sinh viên đã có tài khoản trước đó, hệ thống chỉ gắn vào lớp / cập nhật hồ sơ.`
+          );
+        }
       } else {
-        setBulkResult(created);
-        alert(`Đã tạo ${created.length} tài khoản.`);
+        // === Không có new accounts, chỉ recovered ===
+        alert(
+          `Không tạo thêm tài khoản mới.\n` +
+            `Đã gắn ${recovered.length} sinh viên với các tài khoản đã tồn tại (hoặc đã có email trong Auth).`
+        );
       }
     } catch (e: any) {
       alert(e.message || "Không thể tạo tài khoản hàng loạt.");
@@ -156,13 +209,12 @@ export default function StudentAccountsPage() {
           >
             Hệ thống sẽ:
             <br />• Tìm các sinh viên trong <code>dangky_import</code> của lớp
-            được chọn mà <b>chưa có tài khoản</b>.
-            <br />• Tạo tài khoản Supabase (Auth) + bản ghi <code>
-              hoso
-            </code>{" "}
-            với vai trò <b>sinh viên</b>.
-            <br />• Tự động thêm vào bảng <code>dangky</code> (tham gia lớp).
-            <br />• Sinh mật khẩu random và hiển thị trong bảng bên phải.
+            được chọn.
+            <br />• Nếu chưa có tài khoản → tạo user mới + hồ sơ + gắn vào lớp.
+            <br />• Nếu email đã tồn tại nhưng chưa có hồ sơ → khôi phục và gắn
+            vào lớp.
+            <br />• Nếu đã có đầy đủ tài khoản & hồ sơ → chỉ gắn vào lớp (nếu
+            cần).
           </p>
 
           <label
@@ -228,7 +280,7 @@ export default function StudentAccountsPage() {
           </button>
         </div>
 
-        {/* Cột phải: Bảng tài khoản + mật khẩu vừa tạo */}
+        {/* Cột phải: Bảng tài khoản + mật khẩu vừa xử lý */}
         <div
           style={{
             borderRadius: 12,
@@ -245,7 +297,7 @@ export default function StudentAccountsPage() {
               alignItems: "center",
             }}
           >
-            <h2 style={{ fontSize: 18 }}>Danh sách tài khoản vừa tạo</h2>
+            <h2 style={{ fontSize: 18 }}>Danh sách tài khoản xử lý</h2>
             <button
               onClick={handleCopyResult}
               disabled={!bulkResult.length}
@@ -266,8 +318,8 @@ export default function StudentAccountsPage() {
           {bulkResult.length === 0 ? (
             <p style={{ fontSize: 13, color: "#9ca3af" }}>
               Chưa có dữ liệu. Hãy chọn lớp, nhập domain và bấm{" "}
-              <b>“Tạo tài khoản hàng loạt”</b>. Các tài khoản vừa tạo sẽ hiện ở
-              đây để bạn lưu/ cấp cho sinh viên.
+              <b>“Tạo tài khoản hàng loạt”</b>. Các tài khoản vừa tạo hoặc được
+              khôi phục sẽ hiện ở đây.
             </p>
           ) : (
             <>
@@ -291,7 +343,7 @@ export default function StudentAccountsPage() {
                       <th style={thStyle}>Họ tên</th>
                       <th style={thStyle}>Mã SV</th>
                       <th style={thStyle}>Email</th>
-                      <th style={thStyle}>Mật khẩu</th>
+                      <th style={thStyle}>Mật khẩu / Trạng thái</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -315,10 +367,10 @@ export default function StudentAccountsPage() {
                 }}
               >
                 Gợi ý:
-                <br />• Sau khi tạo, bạn có thể <b>copy bảng</b> rồi dán vào
-                Excel / Google Sheets để lưu trữ.
-                <br />• Khi cấp tài khoản cho sinh viên, yêu cầu sinh viên{" "}
-                <b>đăng nhập và đổi mật khẩu</b> ngay lần đầu.
+                <br />• Các dòng có mật khẩu random là tài khoản mới tạo.
+                <br />• Các dòng hiển thị <code>(đã có tài khoản)</code> là
+                những tài khoản đã tồn tại trước đó, hệ thống chỉ gắn vào lớp /
+                cập nhật hồ sơ.
               </p>
             </>
           )}
